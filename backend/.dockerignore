@@ -1,0 +1,28 @@
+# Git files
+.git
+.gitignore
+
+# Build artifacts
+target/
+**/*.rs.bk
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.local
+
+# Documentation
+README.md
+docs/
+
+# Test files
+tests/
+
+# Uploads directory (created in container)
+uploads/

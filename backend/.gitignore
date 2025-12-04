@@ -1,0 +1,6 @@
+/target
+/uploads
+.env
+*.swp
+*.swo
+*~

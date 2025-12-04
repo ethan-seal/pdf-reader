@@ -1,0 +1,121 @@
+import { createSignal, For, onMount, createEffect } from 'solid-js';
+import type { Message } from '../types';
+import { sendChatMessage } from '../lib/api';
+import { MarkdownRenderer } from './MarkdownRenderer';
+
+interface ChatWidgetProps {
+  documentId: string;
+}
+
+export function ChatWidget(props: ChatWidgetProps) {
+  const [messages, setMessages] = createSignal<Message[]>([]);
+  const [input, setInput] = createSignal('');
+  const [loading, setLoading] = createSignal(false);
+
+  let messagesEndRef: HTMLDivElement | undefined;
+
+  const scrollToBottom = () => {
+    messagesEndRef?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  createEffect(() => {
+    if (messages().length > 0) {
+      setTimeout(scrollToBottom, 100);
+    }
+  });
+
+  const sendMessage = async (content: string) => {
+    if (!content.trim() || loading()) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: content.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const response = await sendChatMessage(props.documentId, [...messages(), userMessage]);
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response.response,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Chat error:', error);
+
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: error instanceof Error ? `Error: ${error.message}` : 'Failed to get response',
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = (e: Event) => {
+    e.preventDefault();
+    sendMessage(input());
+  };
+
+  onMount(() => {
+    sendMessage(
+      'Please provide a brief overview of this paper and suggest some questions I might ask.'
+    );
+  });
+
+  return (
+    <div class="chat-widget">
+      <div class="chat-header">
+        <h2>AI Assistant</h2>
+      </div>
+
+      <div class="chat-messages">
+        <For each={messages()}>
+          {(message) => (
+            <div class={`message ${message.role}`}>
+              {message.role === 'assistant' ? (
+                <MarkdownRenderer content={message.content} />
+              ) : (
+                <p>{message.content}</p>
+              )}
+            </div>
+          )}
+        </For>
+
+        {loading() && (
+          <div class="message assistant loading">
+            <span class="loading-dots">●●●</span>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      <form class="chat-input" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={input()}
+          onInput={(e) => setInput(e.currentTarget.value)}
+          placeholder={loading() ? 'AI is thinking...' : 'Ask a question...'}
+          disabled={loading()}
+        />
+        <button type="submit" disabled={loading() || !input().trim()}>
+          Send
+        </button>
+      </form>
+    </div>
+  );
+}
