@@ -24,14 +24,22 @@ function calculateCost(usage: Usage): number {
   return inputCost + outputCost + cacheWriteCost + cacheReadCost;
 }
 
+const MIN_WIDTH = 300;
+const MAX_WIDTH = 800;
+const COLLAPSE_THRESHOLD = 200;
+const DEFAULT_WIDTH = 400;
+
 export function ChatWidget(props: ChatWidgetProps) {
   const [messages, setMessages] = createSignal<Message[]>([]);
   const [input, setInput] = createSignal('');
   const [loading, setLoading] = createSignal(false);
   const [collapsed, setCollapsed] = createSignal(false);
   const [sessionUsage, setSessionUsage] = createSignal<Usage[]>([]);
+  const [width, setWidth] = createSignal(DEFAULT_WIDTH);
+  const [isResizing, setIsResizing] = createSignal(false);
 
   let messagesEndRef: HTMLDivElement | undefined;
+  let chatWidgetRef: HTMLDivElement | undefined;
 
   const totalCost = () => {
     return sessionUsage().reduce((total, usage) => total + calculateCost(usage), 0);
@@ -116,7 +124,39 @@ export function ChatWidget(props: ChatWidgetProps) {
     sendMessage(input());
   };
 
+  const handleMouseDown = (e: MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isResizing()) return;
+
+    // Calculate new width based on mouse position from right edge
+    const newWidth = window.innerWidth - e.clientX;
+
+    if (newWidth < COLLAPSE_THRESHOLD) {
+      // Auto-collapse if dragged too narrow
+      setCollapsed(true);
+      setWidth(DEFAULT_WIDTH); // Reset to default for when it's expanded again
+    } else if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
+      setCollapsed(false);
+      setWidth(newWidth);
+    } else if (newWidth > MAX_WIDTH) {
+      setCollapsed(false);
+      setWidth(MAX_WIDTH);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsResizing(false);
+  };
+
   onMount(async () => {
+    // Add global mouse event listeners for resize
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
     try {
       // Load chat history first
       const history = await getChatHistory(props.documentId);
@@ -137,10 +177,25 @@ export function ChatWidget(props: ChatWidgetProps) {
         'Please provide a brief overview of this paper and suggest some questions I might ask.'
       );
     }
+
+    // Cleanup on unmount
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
   });
 
   return (
-    <div class={`chat-widget ${collapsed() ? 'collapsed' : ''}`}>
+    <div
+      ref={chatWidgetRef}
+      class={`chat-widget ${collapsed() ? 'collapsed' : ''} ${isResizing() ? 'resizing' : ''}`}
+      style={{ width: collapsed() ? '50px' : `${width()}px` }}
+    >
+      <div
+        class="resize-handle"
+        onMouseDown={handleMouseDown}
+        title="Drag to resize"
+      />
       <div class="chat-header">
         <div class="header-content">
           <h2>AI Assistant</h2>

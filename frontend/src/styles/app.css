@@ -74,16 +74,52 @@ body {
 
 /* Chat Widget */
 .chat-widget {
-  width: 400px;
   display: flex;
   flex-direction: column;
   background: #242424;
   border-left: 1px solid #333;
-  transition: width 0.1s ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chat-widget.resizing {
+  user-select: none;
+  transition: none;
+}
+
+.chat-widget.resizing ~ * {
+  user-select: none;
+}
+
+body:has(.chat-widget.resizing) {
+  cursor: ew-resize;
+  user-select: none;
 }
 
 .chat-widget.collapsed {
   width: 50px;
+}
+
+/* Resize Handle */
+.resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.resize-handle:hover,
+.chat-widget.resizing .resize-handle {
+  background: #0066cc;
+}
+
+.chat-widget.collapsed .resize-handle {
+  display: none;
 }
 
 .chat-header {
