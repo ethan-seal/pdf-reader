@@ -11,6 +11,7 @@ export function ChatWidget(props: ChatWidgetProps) {
   const [messages, setMessages] = createSignal<Message[]>([]);
   const [input, setInput] = createSignal('');
   const [loading, setLoading] = createSignal(false);
+  const [collapsed, setCollapsed] = createSignal(false);
 
   let messagesEndRef: HTMLDivElement | undefined;
 
@@ -77,9 +78,16 @@ export function ChatWidget(props: ChatWidgetProps) {
   });
 
   return (
-    <div class="chat-widget">
+    <div class={`chat-widget ${collapsed() ? 'collapsed' : ''}`}>
       <div class="chat-header">
         <h2>AI Assistant</h2>
+        <button
+          class="collapse-toggle"
+          onClick={() => setCollapsed(!collapsed())}
+          title={collapsed() ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed() ? '◀' : '▶'}
+        </button>
       </div>
 
       <div class="chat-messages">
