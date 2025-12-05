@@ -3,6 +3,10 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  isError?: boolean;
+  retryContext?: {
+    userMessageId: string;
+  };
 }
 
 export interface ChatRequest {

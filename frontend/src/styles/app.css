@@ -161,8 +161,34 @@ body {
   align-self: flex-start;
 }
 
+.message.assistant.error {
+  background: #3a1f1f;
+  border-left: 3px solid #ff6b6b;
+}
+
 .message.loading {
   opacity: 0.6;
+}
+
+.retry-button {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.retry-button:hover:not(:disabled) {
+  background: #ff5252;
+}
+
+.retry-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .loading-dots {

@@ -25,18 +25,21 @@ export function ChatWidget(props: ChatWidgetProps) {
     }
   });
 
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, userMessageId?: string) => {
     if (!content.trim() || loading()) return;
 
+    const messageId = userMessageId || Date.now().toString();
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: messageId,
       role: 'user',
       content: content.trim(),
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
+    if (!userMessageId) {
+      setMessages((prev) => [...prev, userMessage]);
+      setInput('');
+    }
     setLoading(true);
 
     try {
@@ -58,12 +61,27 @@ export function ChatWidget(props: ChatWidgetProps) {
         role: 'assistant',
         content: error instanceof Error ? `Error: ${error.message}` : 'Failed to get response',
         timestamp: new Date(),
+        isError: true,
+        retryContext: {
+          userMessageId: messageId,
+        },
       };
 
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const retryMessage = (errorMessageId: string) => {
+    const errorMsg = messages().find(m => m.id === errorMessageId);
+    if (!errorMsg?.retryContext) return;
+
+    const userMsg = messages().find(m => m.id === errorMsg.retryContext!.userMessageId);
+    if (!userMsg) return;
+
+    setMessages((prev) => prev.filter(m => m.id !== errorMessageId));
+    sendMessage(userMsg.content, userMsg.id);
   };
 
   const handleSubmit = (e: Event) => {
@@ -93,11 +111,20 @@ export function ChatWidget(props: ChatWidgetProps) {
       <div class="chat-messages">
         <For each={messages()}>
           {(message) => (
-            <div class={`message ${message.role}`}>
+            <div class={`message ${message.role} ${message.isError ? 'error' : ''}`}>
               {message.role === 'assistant' ? (
                 <MarkdownRenderer content={message.content} />
               ) : (
                 <p>{message.content}</p>
+              )}
+              {message.isError && (
+                <button
+                  class="retry-button"
+                  onClick={() => retryMessage(message.id)}
+                  disabled={loading()}
+                >
+                  Retry
+                </button>
               )}
             </div>
           )}
