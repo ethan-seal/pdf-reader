@@ -79,7 +79,7 @@ body {
   flex-direction: column;
   background: #242424;
   border-left: 1px solid #333;
-  transition: width 0.3s ease;
+  transition: width 0.1s ease;
 }
 
 .chat-widget.collapsed {
@@ -98,7 +98,7 @@ body {
 .chat-header h2 {
   font-size: 1.2rem;
   color: #fff;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.1s ease;
 }
 
 .chat-widget.collapsed .chat-header h2 {
@@ -116,9 +116,14 @@ body {
   transition: color 0.2s;
   line-height: 1;
   min-width: 30px;
+  flex-shrink: 0;
 }
 
 .collapse-toggle:hover {
+  color: #fff;
+}
+
+.chat-widget.collapsed .collapse-toggle {
   color: #fff;
 }
 
@@ -129,7 +134,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.1s ease;
 }
 
 .chat-widget.collapsed .chat-messages {
@@ -232,7 +237,7 @@ body {
   padding: 1rem;
   border-top: 1px solid #333;
   background: #1a1a1a;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.1s ease;
 }
 
 .chat-widget.collapsed .chat-input {
