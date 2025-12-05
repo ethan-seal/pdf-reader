@@ -1,7 +1,8 @@
 use crate::claude::{ChatRequest, ClaudeClient, ResponseContent, SystemBlock};
+use crate::db::{ChatDatabase, StoredMessage};
 use crate::models::{ChatApiRequest, ChatApiResponse};
 use crate::storage::FileStorage;
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::{Path, State}, http::StatusCode, Json};
 use moka::future::Cache;
 use std::sync::Arc;
 
@@ -9,6 +10,7 @@ pub struct AppState {
     pub claude: ClaudeClient,
     pub storage: Arc<dyn FileStorage>,
     pub pdf_cache: Cache<String, String>, // document_id -> base64
+    pub chat_db: ChatDatabase,
 }
 
 const SYSTEM_PROMPT: &str = r#"You are an AI assistant helping users understand research papers.
@@ -25,6 +27,13 @@ pub async fn chat_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ChatApiRequest>,
 ) -> Result<Json<ChatApiResponse>, (StatusCode, String)> {
+    // Get or create conversation for this document
+    let conversation_id = state
+        .chat_db
+        .get_or_create_conversation(&payload.document_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+
     // Get PDF from cache or storage
     let pdf_base64 = match state.pdf_cache.get(&payload.document_id).await {
         Some(cached) => cached,
@@ -92,8 +101,40 @@ pub async fn chat_handler(
         .collect::<Vec<_>>()
         .join("\n");
 
+    // Save the user message and assistant response to database
+    // Get the last user message from the payload
+    if let Some(last_user_msg) = payload.messages.last() {
+        if last_user_msg.role == "user" {
+            state
+                .chat_db
+                .save_message(&conversation_id, "user", &last_user_msg.content)
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+        }
+    }
+
+    // Save assistant response
+    state
+        .chat_db
+        .save_message(&conversation_id, "assistant", &text)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+
     Ok(Json(ChatApiResponse {
         response: text,
         usage: Some(response.usage),
     }))
+}
+
+pub async fn get_chat_history_handler(
+    State(state): State<Arc<AppState>>,
+    Path(document_id): Path<String>,
+) -> Result<Json<Vec<StoredMessage>>, (StatusCode, String)> {
+    let messages = state
+        .chat_db
+        .get_conversation_messages(&document_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+
+    Ok(Json(messages))
 }

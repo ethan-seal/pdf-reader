@@ -1,6 +1,6 @@
 import { createSignal, For, onMount, createEffect } from 'solid-js';
 import type { Message } from '../types';
-import { sendChatMessage } from '../lib/api';
+import { sendChatMessage, getChatHistory } from '../lib/api';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface ChatWidgetProps {
@@ -89,10 +89,27 @@ export function ChatWidget(props: ChatWidgetProps) {
     sendMessage(input());
   };
 
-  onMount(() => {
-    sendMessage(
-      'Please provide a brief overview of this paper and suggest some questions I might ask.'
-    );
+  onMount(async () => {
+    try {
+      // Load chat history first
+      const history = await getChatHistory(props.documentId);
+
+      if (history.length > 0) {
+        // If history exists, load it
+        setMessages(history);
+      } else {
+        // If no history, send initial greeting
+        sendMessage(
+          'Please provide a brief overview of this paper and suggest some questions I might ask.'
+        );
+      }
+    } catch (error) {
+      console.error('Failed to load chat history:', error);
+      // If history loading fails, send initial greeting
+      sendMessage(
+        'Please provide a brief overview of this paper and suggest some questions I might ask.'
+      );
+    }
   });
 
   return (

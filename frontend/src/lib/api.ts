@@ -45,3 +45,20 @@ export async function sendChatMessage(
 
   return response.json();
 }
+
+export async function getChatHistory(documentId: string): Promise<Message[]> {
+  const response = await fetch(`${API_BASE}/api/chat/history/${documentId}`);
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || 'Failed to load chat history');
+  }
+
+  const data = await response.json();
+  return data.map((msg: any) => ({
+    id: msg.id,
+    role: msg.role,
+    content: msg.content,
+    timestamp: new Date(msg.created_at),
+  }));
+}
