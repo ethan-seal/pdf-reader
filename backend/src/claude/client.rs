@@ -23,6 +23,7 @@ impl ClaudeClient {
             .post("https://api.anthropic.com/v1/messages")
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
+            .header("anthropic-beta", "prompt-caching-2024-07-31")
             .header("content-type", "application/json")
             .json(&request)
             .send()
@@ -36,8 +37,16 @@ impl ClaudeClient {
         Ok(response.json().await?)
     }
 
-    /// Create a message with PDF document
-    pub fn create_pdf_message(&self, pdf_base64: String, text: String) -> Message {
+    /// Create a message with PDF document (with cache control for first message)
+    pub fn create_pdf_message(&self, pdf_base64: String, text: String, enable_cache: bool) -> Message {
+        let cache_control = if enable_cache {
+            Some(super::types::CacheControl {
+                cache_type: "ephemeral".to_string(),
+            })
+        } else {
+            None
+        };
+
         Message {
             role: "user".to_string(),
             content: vec![
@@ -47,8 +56,12 @@ impl ClaudeClient {
                         media_type: "application/pdf".to_string(),
                         data: pdf_base64,
                     },
+                    cache_control: cache_control.clone(),
                 },
-                ContentBlock::Text { text },
+                ContentBlock::Text {
+                    text,
+                    cache_control: None,
+                },
             ],
         }
     }
@@ -57,7 +70,10 @@ impl ClaudeClient {
     pub fn create_text_message(&self, role: &str, text: String) -> Message {
         Message {
             role: role.to_string(),
-            content: vec![ContentBlock::Text { text }],
+            content: vec![ContentBlock::Text {
+                text,
+                cache_control: None,
+            }],
         }
     }
 }

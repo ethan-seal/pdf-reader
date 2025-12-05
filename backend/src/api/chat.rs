@@ -1,12 +1,14 @@
-use crate::claude::{ChatRequest, ClaudeClient, ResponseContent};
+use crate::claude::{ChatRequest, ClaudeClient, ResponseContent, SystemBlock};
 use crate::models::{ChatApiRequest, ChatApiResponse};
 use crate::storage::FileStorage;
 use axum::{extract::State, http::StatusCode, Json};
+use moka::future::Cache;
 use std::sync::Arc;
 
 pub struct AppState {
     pub claude: ClaudeClient,
     pub storage: Arc<dyn FileStorage>,
+    pub pdf_cache: Cache<String, String>, // document_id -> base64
 }
 
 const SYSTEM_PROMPT: &str = r#"You are an AI assistant helping users understand research papers.
@@ -23,23 +25,33 @@ pub async fn chat_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ChatApiRequest>,
 ) -> Result<Json<ChatApiResponse>, (StatusCode, String)> {
-    // Get PDF from storage
-    let pdf_base64 = state
-        .storage
-        .get_pdf_base64(&payload.document_id)
-        .await
-        .map_err(|e| (StatusCode::NOT_FOUND, format!("Document not found: {}", e)))?;
+    // Get PDF from cache or storage
+    let pdf_base64 = match state.pdf_cache.get(&payload.document_id).await {
+        Some(cached) => cached,
+        None => {
+            // Not in cache, fetch from storage and encode
+            let base64 = state
+                .storage
+                .get_pdf_base64(&payload.document_id)
+                .await
+                .map_err(|e| (StatusCode::NOT_FOUND, format!("Document not found: {}", e)))?;
+
+            // Store in cache for future requests
+            state.pdf_cache.insert(payload.document_id.clone(), base64.clone()).await;
+            base64
+        }
+    };
 
     let mut messages = Vec::new();
 
     // Build conversation history
     for (idx, msg) in payload.messages.iter().enumerate() {
         if idx == 0 && msg.role == "user" {
-            // First message: include PDF
+            // First message: include PDF with cache control enabled
             messages.push(
                 state
                     .claude
-                    .create_pdf_message(pdf_base64.clone(), msg.content.clone()),
+                    .create_pdf_message(pdf_base64.clone(), msg.content.clone(), true),
             );
         } else {
             // Subsequent messages: text only
@@ -47,11 +59,20 @@ pub async fn chat_handler(
         }
     }
 
+    // Create system prompt with cache control
+    let system = Some(vec![SystemBlock {
+        block_type: "text".to_string(),
+        text: SYSTEM_PROMPT.to_string(),
+        cache_control: Some(crate::claude::types::CacheControl {
+            cache_type: "ephemeral".to_string(),
+        }),
+    }]);
+
     let request = ChatRequest {
         model: "claude-sonnet-4-5-20250929".to_string(),
         max_tokens: 4096,
         messages,
-        system: Some(SYSTEM_PROMPT.to_string()),
+        system,
     };
 
     let response = state.claude.chat(request).await.map_err(|e| {

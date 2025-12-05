@@ -7,7 +7,9 @@ use crate::api::{chat_handler, get_document_handler, upload_handler, AppState};
 use crate::claude::ClaudeClient;
 use crate::storage::{FileStorage, LocalStorage};
 use axum::{routing::*, Router};
+use moka::future::Cache;
 use std::sync::Arc;
+use std::time::Duration;
 use tower_http::cors::CorsLayer;
 
 #[tokio::main]
@@ -18,9 +20,17 @@ async fn main() {
     let storage: Arc<dyn FileStorage> =
         Arc::new(LocalStorage::new("./uploads").expect("Failed to create storage"));
 
+    // Create cache for base64-encoded PDFs
+    // Cache up to 100 PDFs, TTL of 1 hour
+    let pdf_cache = Cache::builder()
+        .max_capacity(100)
+        .time_to_live(Duration::from_secs(3600))
+        .build();
+
     let state = Arc::new(AppState {
         claude: ClaudeClient::new(api_key),
         storage: storage.clone(),
+        pdf_cache,
     });
 
     let app = Router::new()
