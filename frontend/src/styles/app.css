@@ -102,8 +102,7 @@ body {
 }
 
 .chat-widget.collapsed .chat-header h2 {
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 .collapse-toggle {
