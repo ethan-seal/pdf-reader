@@ -1,5 +1,5 @@
 import { createSignal, For, onMount, createEffect } from 'solid-js';
-import type { Message } from '../types';
+import type { Message, Usage } from '../types';
 import { sendChatMessage, getChatHistory } from '../lib/api';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
@@ -7,13 +7,35 @@ interface ChatWidgetProps {
   documentId: string;
 }
 
+// Claude Sonnet 4.5 pricing (per million tokens)
+const PRICING = {
+  INPUT: 3.00,
+  OUTPUT: 15.00,
+  CACHE_WRITE: 3.75,
+  CACHE_READ: 0.30,
+};
+
+function calculateCost(usage: Usage): number {
+  const inputCost = (usage.input_tokens / 1_000_000) * PRICING.INPUT;
+  const outputCost = (usage.output_tokens / 1_000_000) * PRICING.OUTPUT;
+  const cacheWriteCost = ((usage.cache_creation_input_tokens || 0) / 1_000_000) * PRICING.CACHE_WRITE;
+  const cacheReadCost = ((usage.cache_read_input_tokens || 0) / 1_000_000) * PRICING.CACHE_READ;
+
+  return inputCost + outputCost + cacheWriteCost + cacheReadCost;
+}
+
 export function ChatWidget(props: ChatWidgetProps) {
   const [messages, setMessages] = createSignal<Message[]>([]);
   const [input, setInput] = createSignal('');
   const [loading, setLoading] = createSignal(false);
   const [collapsed, setCollapsed] = createSignal(false);
+  const [sessionUsage, setSessionUsage] = createSignal<Usage[]>([]);
 
   let messagesEndRef: HTMLDivElement | undefined;
+
+  const totalCost = () => {
+    return sessionUsage().reduce((total, usage) => total + calculateCost(usage), 0);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef?.scrollIntoView({ behavior: 'smooth' });
@@ -44,6 +66,11 @@ export function ChatWidget(props: ChatWidgetProps) {
 
     try {
       const response = await sendChatMessage(props.documentId, [...messages(), userMessage]);
+
+      // Track usage for this request
+      if (response.usage) {
+        setSessionUsage((prev) => [...prev, response.usage!]);
+      }
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -115,7 +142,14 @@ export function ChatWidget(props: ChatWidgetProps) {
   return (
     <div class={`chat-widget ${collapsed() ? 'collapsed' : ''}`}>
       <div class="chat-header">
-        <h2>AI Assistant</h2>
+        <div class="header-content">
+          <h2>AI Assistant</h2>
+          {totalCost() > 0 && (
+            <div class="cost-display" title="Total API cost for this session">
+              ${totalCost().toFixed(4)}
+            </div>
+          )}
+        </div>
         <button
           class="collapse-toggle"
           onClick={() => setCollapsed(!collapsed())}

@@ -95,14 +95,28 @@ body {
   align-items: center;
 }
 
-.chat-header h2 {
-  font-size: 1.2rem;
-  color: #fff;
+.chat-header .header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
   transition: opacity 0.1s ease;
 }
 
-.chat-widget.collapsed .chat-header h2 {
+.chat-widget.collapsed .chat-header .header-content {
   display: none;
+}
+
+.chat-header h2 {
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.cost-display {
+  font-size: 0.85rem;
+  color: #5cb3ff;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 600;
 }
 
 .collapse-toggle {

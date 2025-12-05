@@ -17,10 +17,14 @@ export interface ChatRequest {
   }>;
 }
 
+export interface Usage {
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+}
+
 export interface ChatResponse {
   response: string;
-  usage?: {
-    input_tokens: number;
-    output_tokens: number;
-  };
+  usage?: Usage;
 }
