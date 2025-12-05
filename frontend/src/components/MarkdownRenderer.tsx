@@ -28,6 +28,11 @@ export function MarkdownRenderer(props: MarkdownRendererProps) {
 
 function renderMarkdown(text: string): string {
   return text
+    // Code blocks with optional language identifier (must be processed before inline code)
+    .replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
+      const language = lang ? ` class="language-${lang}"` : '';
+      return `<pre><code${language}>${escapeHtml(code.trim())}</code></pre>`;
+    })
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
     .replace(/^## (.*$)/gim, '<h2>$1</h2>')
     .replace(/^# (.*$)/gim, '<h1>$1</h1>')
@@ -36,4 +41,10 @@ function renderMarkdown(text: string): string {
     .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>')
     .replace(/`(.*?)`/g, '<code>$1</code>')
     .replace(/\n/g, '<br>');
+}
+
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
