@@ -12,6 +12,15 @@ pub struct StoredMessage {
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct Conversation {
+    pub id: String,
+    pub document_id: String,
+    pub title: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
 pub struct Document {
     pub id: String,
     pub filename: String,
@@ -199,5 +208,114 @@ impl ChatDatabase {
         .await?;
 
         Ok(documents)
+    }
+
+    // ===== Multiple Chats Support =====
+
+    pub async fn create_conversation(
+        &self,
+        document_id: &str,
+        title: Option<&str>,
+    ) -> Result<String, sqlx::Error> {
+        let conversation_id = Uuid::new_v4().to_string();
+        let now = Utc::now().to_rfc3339();
+
+        sqlx::query(
+            "INSERT INTO conversations (id, document_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(&conversation_id)
+        .bind(document_id)
+        .bind(title)
+        .bind(&now)
+        .bind(&now)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(conversation_id)
+    }
+
+    pub async fn list_conversations(
+        &self,
+        document_id: &str,
+    ) -> Result<Vec<Conversation>, sqlx::Error> {
+        let conversations: Vec<Conversation> = sqlx::query_as(
+            r#"
+            SELECT id, document_id, title, created_at, updated_at
+            FROM conversations
+            WHERE document_id = ?
+            ORDER BY updated_at DESC
+            "#,
+        )
+        .bind(document_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(conversations)
+    }
+
+    pub async fn get_conversation(
+        &self,
+        conversation_id: &str,
+    ) -> Result<Option<Conversation>, sqlx::Error> {
+        let conversation: Option<Conversation> = sqlx::query_as(
+            "SELECT id, document_id, title, created_at, updated_at FROM conversations WHERE id = ?",
+        )
+        .bind(conversation_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(conversation)
+    }
+
+    pub async fn delete_conversation(&self, conversation_id: &str) -> Result<(), sqlx::Error> {
+        // Delete all messages first (foreign key constraint)
+        sqlx::query("DELETE FROM chat_messages WHERE conversation_id = ?")
+            .bind(conversation_id)
+            .execute(&self.pool)
+            .await?;
+
+        // Delete the conversation
+        sqlx::query("DELETE FROM conversations WHERE id = ?")
+            .bind(conversation_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn update_conversation_title(
+        &self,
+        conversation_id: &str,
+        title: &str,
+    ) -> Result<(), sqlx::Error> {
+        let now = Utc::now().to_rfc3339();
+
+        sqlx::query("UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?")
+            .bind(title)
+            .bind(&now)
+            .bind(conversation_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_conversation_messages_by_id(
+        &self,
+        conversation_id: &str,
+    ) -> Result<Vec<StoredMessage>, sqlx::Error> {
+        let messages: Vec<StoredMessage> = sqlx::query_as(
+            r#"
+            SELECT id, role, content, created_at
+            FROM chat_messages
+            WHERE conversation_id = ?
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(conversation_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(messages)
     }
 }

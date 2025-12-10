@@ -29,6 +29,7 @@ pub async fn initialize_database(database_url: &str) -> Result<SqlitePool> {
         CREATE TABLE IF NOT EXISTS conversations (
             id TEXT PRIMARY KEY,
             document_id TEXT NOT NULL,
+            title TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY (document_id) REFERENCES documents(id)
@@ -37,6 +38,16 @@ pub async fn initialize_database(database_url: &str) -> Result<SqlitePool> {
     )
     .execute(&pool)
     .await?;
+
+    // Add title column if it doesn't exist (for existing databases)
+    sqlx::query(
+        r#"
+        ALTER TABLE conversations ADD COLUMN title TEXT
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .ok(); // Ignore error if column already exists
 
     sqlx::query(
         r#"
