@@ -5,7 +5,7 @@ mod error;
 mod models;
 mod storage;
 
-use crate::api::{backfill_metadata, backfill_metadata_handler, chat_handler, get_chat_history_handler, get_document_handler, upload_handler, AppState};
+use crate::api::{backfill_metadata, backfill_metadata_handler, chat_handler, get_chat_history_handler, get_document_handler, list_documents_handler, upload_handler, AppState};
 use crate::claude::ClaudeClient;
 use crate::db::{initialize_database, ChatDatabase};
 use crate::storage::{FileStorage, LocalStorage};
@@ -64,6 +64,7 @@ async fn main() {
         .route("/api/upload", post(upload_handler))
         .route("/api/chat", post(chat_handler))
         .route("/api/chat/history/:document_id", get(get_chat_history_handler))
+        .route("/api/documents", get(list_documents_handler))
         .route("/api/documents/:id", get(get_document_handler))
         .route("/api/metadata/backfill", post(backfill_metadata_handler))
         .with_state(state)

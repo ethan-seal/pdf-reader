@@ -432,3 +432,129 @@ body:has(.chat-widget.resizing) {
 .chat-messages::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Home Page */
+.home-container {
+  min-height: 100vh;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #333;
+}
+
+.home-header h1 {
+  font-size: 2rem;
+  color: #fff;
+}
+
+.loading {
+  text-align: center;
+  padding: 4rem;
+  color: #999;
+  font-size: 1.1rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem;
+  color: #999;
+}
+
+.empty-state p {
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.empty-state p:first-child {
+  font-size: 1.3rem;
+  color: #ccc;
+}
+
+/* Documents Grid */
+.documents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.document-card {
+  background: #242424;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.document-card:hover {
+  background: #2a2a2a;
+  border-color: #0066cc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.1);
+}
+
+.document-header {
+  margin-bottom: 1rem;
+}
+
+.document-title {
+  font-size: 1.1rem;
+  color: #fff;
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+}
+
+.document-date {
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.document-section {
+  margin-top: 1rem;
+}
+
+.document-section h4 {
+  font-size: 0.85rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.topic-tag {
+  background: #1a3a52;
+  color: #5cb3ff;
+}
+
+.keyword-tag {
+  background: #2a2a2a;
+  color: #b0b0b0;
+  border: 1px solid #3a3a3a;
+}
+
+.no-metadata {
+  font-size: 0.9rem;
+  color: #666;
+  font-style: italic;
+}

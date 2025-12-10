@@ -1,11 +1,11 @@
 import { Router, Route } from '@solidjs/router';
-import { Upload } from './components/Upload';
+import { Home } from './components/Home';
 import { PdfViewer } from './components/PdfViewer';
 
 export function App() {
   return (
     <Router>
-      <Route path="/" component={Upload} />
+      <Route path="/" component={Home} />
       <Route path="/pdf/:id" component={PdfViewer} />
     </Router>
   );

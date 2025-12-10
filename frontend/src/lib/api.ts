@@ -2,6 +2,14 @@ import type { Message, ChatResponse } from '../types';
 
 const API_BASE = 'http://localhost:3001';
 
+export interface DocumentMetadata {
+  id: string;
+  filename: string;
+  keywords: string[];
+  topics: string[];
+  uploaded_at: string;
+}
+
 export async function uploadPdf(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('pdf', file);
@@ -61,4 +69,15 @@ export async function getChatHistory(documentId: string): Promise<Message[]> {
     content: msg.content,
     timestamp: new Date(msg.created_at),
   }));
+}
+
+export async function getRecentDocuments(limit: number = 20): Promise<DocumentMetadata[]> {
+  const response = await fetch(`${API_BASE}/api/documents?limit=${limit}`);
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || 'Failed to load documents');
+  }
+
+  return response.json();
 }
