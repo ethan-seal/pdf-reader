@@ -164,18 +164,11 @@ export function ChatWidget(props: ChatWidgetProps) {
       if (history.length > 0) {
         // If history exists, load it
         setMessages(history);
-      } else {
-        // If no history, send initial greeting
-        sendMessage(
-          'Please provide a brief overview of this paper and suggest some questions I might ask.'
-        );
       }
+      // No else block - let chat be empty if no history
     } catch (error) {
       console.error('Failed to load chat history:', error);
-      // If history loading fails, send initial greeting
-      sendMessage(
-        'Please provide a brief overview of this paper and suggest some questions I might ask.'
-      );
+      // Let chat be empty on error too
     }
 
     // Cleanup on unmount
