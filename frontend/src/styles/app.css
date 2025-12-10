@@ -305,6 +305,60 @@ body:has(.chat-widget.resizing) {
   text-decoration: underline;
 }
 
+.collapsible-section {
+  border: 1px solid #333;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+  background: #2b2b2b;
+}
+
+.collapsible-section.level-2 {
+  margin-left: 0.5rem;
+}
+
+.collapsible-section.level-3 {
+  margin-left: 1rem;
+}
+
+.section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: transparent;
+  color: inherit;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.section-title {
+  font-weight: 600;
+  flex: 1;
+}
+
+.chevron {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  color: #5cb3ff;
+  font-size: 0.95rem;
+}
+
+.chevron.open {
+  transform: rotate(90deg);
+}
+
+.section-body {
+  padding: 0.25rem 0.75rem 0.75rem;
+  border-top: 1px solid #333;
+}
+
+.section-body.standalone {
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
 /* Chat Input */
 .chat-input {
   display: flex;
