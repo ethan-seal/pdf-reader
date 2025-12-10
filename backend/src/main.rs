@@ -23,7 +23,7 @@ async fn main() {
         Arc::new(LocalStorage::new("./uploads").expect("Failed to create storage"));
 
     // Initialize SQLite database
-    let db_pool = initialize_database("sqlite:chat_history.db?mode=rwc")
+    let db_pool = initialize_database("sqlite:./chat_history.db?mode=rwc")
         .await
         .expect("Failed to initialize database");
     let chat_db = ChatDatabase::new(db_pool);
