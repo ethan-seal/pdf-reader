@@ -1,5 +1,5 @@
 use chrono::Utc;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
 
@@ -9,6 +9,17 @@ pub struct StoredMessage {
     pub role: String,
     pub content: String,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct Document {
+    pub id: String,
+    pub filename: String,
+    pub keywords: Option<String>,  // JSON array stored as TEXT
+    pub topics: Option<String>,    // JSON array stored as TEXT
+    pub uploaded_at: String,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 #[derive(Clone)]
@@ -99,5 +110,81 @@ impl ChatDatabase {
         .await?;
 
         Ok(messages)
+    }
+
+    pub async fn create_document(
+        &self,
+        document_id: &str,
+        filename: &str,
+    ) -> Result<(), sqlx::Error> {
+        let now = Utc::now().to_rfc3339();
+
+        sqlx::query(
+            r#"
+            INSERT INTO documents (id, filename, keywords, topics, uploaded_at, created_at, updated_at)
+            VALUES (?, ?, NULL, NULL, ?, ?, ?)
+            "#,
+        )
+        .bind(document_id)
+        .bind(filename)
+        .bind(&now)
+        .bind(&now)
+        .bind(&now)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_document(&self, document_id: &str) -> Result<Option<Document>, sqlx::Error> {
+        let document: Option<Document> = sqlx::query_as(
+            "SELECT id, filename, keywords, topics, uploaded_at, created_at, updated_at FROM documents WHERE id = ?",
+        )
+        .bind(document_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(document)
+    }
+
+    pub async fn update_document_metadata(
+        &self,
+        document_id: &str,
+        keywords: Option<&str>,
+        topics: Option<&str>,
+    ) -> Result<(), sqlx::Error> {
+        let now = Utc::now().to_rfc3339();
+
+        sqlx::query(
+            r#"
+            UPDATE documents
+            SET keywords = ?, topics = ?, updated_at = ?
+            WHERE id = ?
+            "#,
+        )
+        .bind(keywords)
+        .bind(topics)
+        .bind(&now)
+        .bind(document_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn list_recent_documents(&self, limit: i32) -> Result<Vec<Document>, sqlx::Error> {
+        let documents: Vec<Document> = sqlx::query_as(
+            r#"
+            SELECT id, filename, keywords, topics, uploaded_at, created_at, updated_at
+            FROM documents
+            ORDER BY uploaded_at DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(documents)
     }
 }

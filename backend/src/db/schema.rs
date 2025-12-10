@@ -10,11 +10,28 @@ pub async fn initialize_database(database_url: &str) -> Result<SqlitePool> {
     // Create tables
     sqlx::query(
         r#"
+        CREATE TABLE IF NOT EXISTS documents (
+            id TEXT PRIMARY KEY,
+            filename TEXT NOT NULL,
+            keywords TEXT,
+            topics TEXT,
+            uploaded_at TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        "#,
+    )
+    .execute(&pool)
+    .await?;
+
+    sqlx::query(
+        r#"
         CREATE TABLE IF NOT EXISTS conversations (
             id TEXT PRIMARY KEY,
             document_id TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (document_id) REFERENCES documents(id)
         )
         "#,
     )
@@ -37,6 +54,15 @@ pub async fn initialize_database(database_url: &str) -> Result<SqlitePool> {
     .await?;
 
     // Create indexes for faster queries
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_documents_uploaded_at
+        ON documents(uploaded_at)
+        "#,
+    )
+    .execute(&pool)
+    .await?;
+
     sqlx::query(
         r#"
         CREATE INDEX IF NOT EXISTS idx_conversations_document_id
