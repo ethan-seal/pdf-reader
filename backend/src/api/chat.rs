@@ -1,8 +1,9 @@
 use crate::claude::{ChatRequest, ClaudeClient, ResponseContent, SystemBlock};
 use crate::db::{ChatDatabase, StoredMessage};
+use crate::error::ApiError;
 use crate::models::{ChatApiRequest, ChatApiResponse};
 use crate::storage::FileStorage;
-use axum::{extract::{Path, State}, http::StatusCode, Json};
+use axum::{extract::{Path, State}, Json};
 use moka::future::Cache;
 use std::sync::Arc;
 
@@ -26,13 +27,13 @@ Guidelines:
 pub async fn chat_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ChatApiRequest>,
-) -> Result<Json<ChatApiResponse>, (StatusCode, String)> {
+) -> Result<Json<ChatApiResponse>, ApiError> {
     // Get or create conversation for this document
     let conversation_id = state
         .chat_db
         .get_or_create_conversation(&payload.document_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+        .map_err(|e| ApiError::DatabaseError(e.to_string()))?;
 
     // Get PDF from cache or storage
     let pdf_base64 = match state.pdf_cache.get(&payload.document_id).await {
@@ -43,7 +44,7 @@ pub async fn chat_handler(
                 .storage
                 .get_pdf_base64(&payload.document_id)
                 .await
-                .map_err(|e| (StatusCode::NOT_FOUND, format!("Document not found: {}", e)))?;
+                .map_err(|e| ApiError::NotFound(format!("Document not found: {}", e)))?;
 
             // Store in cache for future requests
             state.pdf_cache.insert(payload.document_id.clone(), base64.clone()).await;
@@ -84,12 +85,11 @@ pub async fn chat_handler(
         system,
     };
 
-    let response = state.claude.chat(request).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Claude API error: {}", e),
-        )
-    })?;
+    let response = state
+        .claude
+        .chat(request)
+        .await
+        .map_err(|e| ApiError::ExternalApiError(format!("Claude API error: {}", e)))?;
 
     // Extract text from response
     let text = response
@@ -109,7 +109,7 @@ pub async fn chat_handler(
                 .chat_db
                 .save_message(&conversation_id, "user", &last_user_msg.content)
                 .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+                .map_err(|e| ApiError::DatabaseError(e.to_string()))?;
         }
     }
 
@@ -118,7 +118,7 @@ pub async fn chat_handler(
         .chat_db
         .save_message(&conversation_id, "assistant", &text)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+        .map_err(|e| ApiError::DatabaseError(e.to_string()))?;
 
     Ok(Json(ChatApiResponse {
         response: text,
@@ -129,12 +129,12 @@ pub async fn chat_handler(
 pub async fn get_chat_history_handler(
     State(state): State<Arc<AppState>>,
     Path(document_id): Path<String>,
-) -> Result<Json<Vec<StoredMessage>>, (StatusCode, String)> {
+) -> Result<Json<Vec<StoredMessage>>, ApiError> {
     let messages = state
         .chat_db
         .get_conversation_messages(&document_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+        .map_err(|e| ApiError::DatabaseError(e.to_string()))?;
 
     Ok(Json(messages))
 }

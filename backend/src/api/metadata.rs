@@ -1,7 +1,7 @@
 use crate::api::AppState;
+use crate::error::ApiError;
 use axum::{
     extract::State,
-    http::StatusCode,
     Json,
 };
 use serde::Serialize;
@@ -18,9 +18,10 @@ pub struct BackfillResponse {
 /// Backfill metadata for existing PDFs without keywords/topics
 pub async fn backfill_metadata_handler(
     State(state): State<Arc<AppState>>,
-) -> Result<Json<BackfillResponse>, (StatusCode, String)> {
-    let result = backfill_metadata(&state).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+) -> Result<Json<BackfillResponse>, ApiError> {
+    let result = backfill_metadata(&state)
+        .await
+        .map_err(|e| ApiError::InternalError(e.to_string()))?;
 
     Ok(Json(result))
 }

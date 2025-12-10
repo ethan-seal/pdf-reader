@@ -1,6 +1,7 @@
 mod api;
 mod claude;
 mod db;
+mod error;
 mod models;
 mod storage;
 
@@ -68,11 +69,12 @@ async fn main() {
         .with_state(state)
         .layer(CorsLayer::permissive());
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3001")
+    let port = std::env::var("BACKEND_PORT").unwrap_or_else(|_| "3001".to_string());
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
         .await
         .unwrap();
 
-    println!("Server running on http://localhost:3001");
+    println!("Server running on http://localhost:{port}");
 
     axum::serve(listener, app).await.unwrap();
 }

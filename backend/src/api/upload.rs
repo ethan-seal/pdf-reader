@@ -1,8 +1,8 @@
 use crate::api::AppState;
 use crate::api::metadata::extract_and_save_metadata;
+use crate::error::ApiError;
 use axum::{
     extract::{Multipart, State},
-    http::StatusCode,
     Json,
 };
 use serde::Serialize;
@@ -16,14 +16,14 @@ pub struct UploadResponse {
 pub async fn upload_handler(
     State(state): State<Arc<AppState>>,
     mut multipart: Multipart,
-) -> Result<Json<UploadResponse>, (StatusCode, String)> {
+) -> Result<Json<UploadResponse>, ApiError> {
     let storage = &state.storage;
     let chat_db = &state.chat_db;
 
     while let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
+        .map_err(|e| ApiError::BadRequest(format!("Invalid multipart data: {}", e)))?
     {
         let name = field.name().unwrap_or("").to_string();
 
@@ -33,18 +33,18 @@ pub async fn upload_handler(
             let data = field
                 .bytes()
                 .await
-                .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+                .map_err(|e| ApiError::BadRequest(format!("Failed to read file data: {}", e)))?;
 
             let document_id = storage
                 .store_pdf(&filename, data)
                 .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+                .map_err(|e| ApiError::StorageError(e.to_string()))?;
 
             // Create document record in database
             chat_db
                 .create_document(&document_id, &filename)
                 .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+                .map_err(|e| ApiError::DatabaseError(e.to_string()))?;
 
             // Extract metadata in background (don't block upload response)
             let state_clone = state.clone();
@@ -59,8 +59,7 @@ pub async fn upload_handler(
         }
     }
 
-    Err((
-        StatusCode::BAD_REQUEST,
-        "No PDF file found".to_string(),
+    Err(ApiError::BadRequest(
+        "No PDF file found in request".to_string(),
     ))
 }
