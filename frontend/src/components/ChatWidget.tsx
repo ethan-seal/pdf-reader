@@ -27,7 +27,7 @@ function calculateCost(usage: Usage): number {
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 800;
 const COLLAPSE_THRESHOLD = 200;
-const DEFAULT_WIDTH = 400;
+const DEFAULT_WIDTH = 700;
 
 export function ChatWidget(props: ChatWidgetProps) {
   const [messages, setMessages] = createSignal<Message[]>([]);
