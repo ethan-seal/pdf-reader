@@ -76,4 +76,39 @@ impl ClaudeClient {
             }],
         }
     }
+
+    /// Extract keywords and topics from a PDF document
+    pub async fn extract_metadata(&self, pdf_base64: String) -> Result<super::types::MetadataExtractionResponse> {
+        let message = self.create_pdf_message(
+            pdf_base64,
+            "Extract keywords and topics from this PDF document. Analyze the content and return ONLY a valid JSON object with this exact format: {\"keywords\": [\"keyword1\", \"keyword2\", ...], \"topics\": [\"topic1\", \"topic2\", ...]}. Provide 5-10 relevant keywords and 3-5 main topics. No additional text, just the JSON.".to_string(),
+            false,
+        );
+
+        let request = super::types::ChatRequest {
+            model: self.model.clone(),
+            max_tokens: 1024,
+            messages: vec![message],
+            system: None,
+        };
+
+        let response = self.chat(request).await?;
+
+        // Extract text from response
+        if let Some(super::types::ResponseContent::Text { text }) = response.content.first() {
+            // Try to parse JSON, handling possible markdown code blocks
+            let json_text = text.trim()
+                .trim_start_matches("```json")
+                .trim_start_matches("```")
+                .trim_end_matches("```")
+                .trim();
+
+            let metadata: super::types::MetadataExtractionResponse = serde_json::from_str(json_text)
+                .map_err(|e| anyhow::anyhow!("Failed to parse metadata JSON: {}. Response was: {}", e, text))?;
+
+            Ok(metadata)
+        } else {
+            anyhow::bail!("No text content in response")
+        }
+    }
 }

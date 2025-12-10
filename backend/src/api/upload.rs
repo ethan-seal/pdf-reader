@@ -1,4 +1,5 @@
 use crate::api::AppState;
+use crate::api::metadata::extract_and_save_metadata;
 use axum::{
     extract::{Multipart, State},
     http::StatusCode,
@@ -44,6 +45,15 @@ pub async fn upload_handler(
                 .create_document(&document_id, &filename)
                 .await
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+            // Extract metadata in background (don't block upload response)
+            let state_clone = state.clone();
+            let doc_id = document_id.clone();
+            tokio::spawn(async move {
+                if let Err(e) = extract_and_save_metadata(&state_clone, &doc_id).await {
+                    eprintln!("Failed to extract metadata for {}: {}", doc_id, e);
+                }
+            });
 
             return Ok(Json(UploadResponse { document_id }));
         }

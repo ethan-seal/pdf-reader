@@ -75,3 +75,9 @@ pub struct Usage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cache_read_input_tokens: Option<u32>,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MetadataExtractionResponse {
+    pub keywords: Vec<String>,
+    pub topics: Vec<String>,
+}
