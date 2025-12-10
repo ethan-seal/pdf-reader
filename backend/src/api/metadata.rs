@@ -50,7 +50,7 @@ pub async fn extract_and_save_metadata(state: &Arc<AppState>, document_id: &str)
 }
 
 /// Backfill metadata for all documents that don't have it yet
-async fn backfill_metadata(state: &Arc<AppState>) -> anyhow::Result<BackfillResponse> {
+pub async fn backfill_metadata(state: &Arc<AppState>) -> anyhow::Result<BackfillResponse> {
     // Get all documents
     let documents = state.chat_db.list_recent_documents(1000).await?;
 

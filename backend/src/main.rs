@@ -4,7 +4,7 @@ mod db;
 mod models;
 mod storage;
 
-use crate::api::{backfill_metadata_handler, chat_handler, get_chat_history_handler, get_document_handler, upload_handler, AppState};
+use crate::api::{backfill_metadata, backfill_metadata_handler, chat_handler, get_chat_history_handler, get_document_handler, upload_handler, AppState};
 use crate::claude::ClaudeClient;
 use crate::db::{initialize_database, ChatDatabase};
 use crate::storage::{FileStorage, LocalStorage};
@@ -40,6 +40,23 @@ async fn main() {
         storage: storage.clone(),
         pdf_cache,
         chat_db,
+    });
+
+    // Spawn background task to backfill metadata for existing PDFs
+    let state_clone = state.clone();
+    tokio::spawn(async move {
+        println!("Starting metadata backfill for existing PDFs...");
+        match backfill_metadata(&state_clone).await {
+            Ok(result) => {
+                println!(
+                    "Metadata backfill complete: {} processed, {} succeeded, {} failed",
+                    result.processed, result.succeeded, result.failed
+                );
+            }
+            Err(e) => {
+                eprintln!("Metadata backfill error: {}", e);
+            }
+        }
     });
 
     let app = Router::new()
