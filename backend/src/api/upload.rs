@@ -17,6 +17,8 @@ pub async fn upload_handler(
     mut multipart: Multipart,
 ) -> Result<Json<UploadResponse>, (StatusCode, String)> {
     let storage = &state.storage;
+    let chat_db = &state.chat_db;
+
     while let Some(field) = multipart
         .next_field()
         .await
@@ -34,6 +36,12 @@ pub async fn upload_handler(
 
             let document_id = storage
                 .store_pdf(&filename, data)
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+            // Create document record in database
+            chat_db
+                .create_document(&document_id, &filename)
                 .await
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

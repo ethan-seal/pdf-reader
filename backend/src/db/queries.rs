@@ -33,6 +33,19 @@ impl ChatDatabase {
     }
 
     pub async fn get_or_create_conversation(&self, document_id: &str) -> Result<String, sqlx::Error> {
+        // Ensure document exists in database (for backward compatibility with old uploads)
+        let doc_exists: Option<(String,)> = sqlx::query_as(
+            "SELECT id FROM documents WHERE id = ?",
+        )
+        .bind(document_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if doc_exists.is_none() {
+            // Create document record with default filename for backward compatibility
+            self.create_document(document_id, "unknown.pdf").await?;
+        }
+
         // Check if conversation exists
         let existing: Option<(String,)> = sqlx::query_as(
             "SELECT id FROM conversations WHERE document_id = ? ORDER BY created_at DESC LIMIT 1",
